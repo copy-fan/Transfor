@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Feishu Base From Excel is a Codex skill that converts Excel workbooks into Feishu multidimensional Base tables with inferred fields, imported sheets, views, and dashboards."
+    />
+    <title>Feishu Base From Excel</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar" aria-label="Project navigation">
+      <a class="brand" href="#top" aria-label="Feishu Base From Excel home">
+        <span class="brand-mark" aria-hidden="true">Fx</span>
+        <span>Feishu Base From Excel</span>
+      </a>
+      <nav class="nav-links" aria-label="Page sections">
+        <a href="#workflow">Workflow</a>
+        <a href="#features">Features</a>
+        <a href="#usage">Usage</a>
+        <a href="#files">Files</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Codex Skill · Excel to Feishu Base</p>
+          <h1>把 Excel 自动转成可复盘的飞书多维表格</h1>
+          <p class="hero-text">
+            一个可复用的 Codex skill：读取本地 Excel，识别主数据表，推断字段类型，调用
+            lark-cli 创建飞书 Base，并自动补齐运营视图和数据看板。
+          </p>
+          <div class="hero-actions" aria-label="Primary actions">
+            <a class="button primary" href="#usage">查看用法</a>
+            <a class="button secondary" href="./SKILL.md">打开 SKILL.md</a>
+          </div>
+        </div>
+
+        <div class="product-panel" aria-label="Generated Feishu Base preview">
+          <div class="panel-header">
+            <span class="dot blue"></span>
+            <span class="dot green"></span>
+            <span class="dot coral"></span>
+            <span class="panel-title">Base import preview</span>
+          </div>
+          <div class="metric-row">
+            <div>
+              <span class="metric-label">Main table</span>
+              <strong>267 rows</strong>
+            </div>
+            <div>
+              <span class="metric-label">Fields</span>
+              <strong>27 inferred</strong>
+            </div>
+            <div>
+              <span class="metric-label">Dashboards</span>
+              <strong>Auto-built</strong>
+            </div>
+          </div>
+          <div class="table-preview" role="img" aria-label="Preview of imported table and charts">
+            <div class="preview-row header">
+              <span>素材ID</span><span>ROI</span><span>消耗</span><span>脚本风格</span>
+            </div>
+            <div class="preview-row">
+              <span>763234...</span><span>1.95</span><span>¥3,930</span><span>价格福利型</span>
+            </div>
+            <div class="preview-row">
+              <span>762939...</span><span>2.30</span><span>¥1,492</span><span>价格福利型</span>
+            </div>
+            <div class="chart-area">
+              <div class="pie" aria-hidden="true"></div>
+              <div class="bars" aria-hidden="true">
+                <span style="--bar: 88%"></span>
+                <span style="--bar: 56%"></span>
+                <span style="--bar: 42%"></span>
+                <span style="--bar: 28%"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section stats" aria-label="Skill highlights">
+        <div>
+          <strong>200</strong>
+          <span>rows per safe write batch</span>
+        </div>
+        <div>
+          <strong>5+</strong>
+          <span>field styles inferred</span>
+        </div>
+        <div>
+          <strong>0</strong>
+          <span>manual schema rewrites</span>
+        </div>
+      </section>
+
+      <section id="workflow" class="section split">
+        <div>
+          <p class="eyebrow">Workflow</p>
+          <h2>从文件到飞书 Base 的固定路径</h2>
+          <p>
+            skill 把容易出错的步骤固定成脚本：先预检，再创建 Base，最后导入记录、视图和看板。
+            如果任一步失败，会留下 JSON 日志，方便继续而不是重来。
+          </p>
+        </div>
+        <ol class="timeline">
+          <li><strong>Preview</strong><span>识别主表、辅助表、字段类型和可生成组件。</span></li>
+          <li><strong>Create</strong><span>用 lark-cli 创建飞书 Base 和第一张主表。</span></li>
+          <li><strong>Import</strong><span>按 200 行分批写入记录，其他 sheet 作为辅助表导入。</span></li>
+          <li><strong>Analyze</strong><span>自动创建高潜、低效、标签补齐视图和消耗分布图。</span></li>
+        </ol>
+      </section>
+
+      <section id="features" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Features</p>
+          <h2>面向素材复盘，也适合通用表格迁移</h2>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <h3>字段类型推断</h3>
+            <p>自动识别文本、数值、金额、百分比、日期时间、单选和多选字段。</p>
+          </article>
+          <article>
+            <h3>多 sheet 导入</h3>
+            <p>主数据进入核心表，字段字典、原始数据、视图建议等保留为辅助表。</p>
+          </article>
+          <article>
+            <h3>运营视图</h3>
+            <p>根据 ROI、消耗、脚本风格、开头钩子和标签字段生成行动队列。</p>
+          </article>
+          <article>
+            <h3>看板组件</h3>
+            <p>自动生成消耗占比饼图，帮助快速判断哪类脚本和钩子最吃预算。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="usage" class="section command-section">
+        <div>
+          <p class="eyebrow">Usage</p>
+          <h2>两条命令完成预检和导入</h2>
+          <p>先用 dry preview 看计划，再执行真实导入。需要飞书 CLI 已安装并完成授权。</p>
+        </div>
+        <div class="code-shell" data-copy-target="commands">
+          <button class="copy-button" type="button" data-copy="commands">Copy</button>
+          <pre id="commands"><code>python3 scripts/feishu_base_from_excel.py \
+  --excel /path/to/workbook.xlsx \
+  --prepare-only
+
+python3 scripts/feishu_base_from_excel.py \
+  --excel /path/to/workbook.xlsx \
+  --base-name "千川素材跑量分析"</code></pre>
+        </div>
+      </section>
+
+      <section id="files" class="section files">
+        <div class="section-heading">
+          <p class="eyebrow">Repository</p>
+          <h2>项目文件</h2>
+        </div>
+        <div class="file-list">
+          <a href="./SKILL.md"><span>SKILL.md</span><small>Codex skill instructions</small></a>
+          <a href="./agents/openai.yaml"><span>agents/openai.yaml</span><small>UI metadata</small></a>
+          <a href="./scripts/feishu_base_from_excel.py"><span>scripts/feishu_base_from_excel.py</span><small>Reusable import script</small></a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Built for repeatable Excel to Feishu Base conversions.</span>
+      <a href="#top">Back to top</a>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
