@@ -1,0 +1,4 @@
+interface:
+  display_name: "飞书 Excel 转多维表格"
+  short_description: "将 Excel 自动导入飞书多维表格并生成视图"
+  default_prompt: "Use $feishu-base-from-excel to convert this Excel workbook into a Feishu Base with useful views and dashboards."
