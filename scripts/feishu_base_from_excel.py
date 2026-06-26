@@ -50,6 +50,29 @@ def clean_value(value: Any) -> Any:
     return value
 
 
+def parse_number(value: Any) -> float | None:
+    value = clean_value(value)
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text:
+        return None
+    negative = text.startswith("(") and text.endswith(")")
+    text = text.strip("()")
+    text = text.replace(",", "").replace("，", "").replace("￥", "").replace("¥", "")
+    is_percent = text.endswith("%")
+    text = text[:-1] if is_percent else text
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    if negative:
+        number = -number
+    return number / 100 if is_percent else number
+
+
 def split_multi(value: Any) -> list[str] | None:
     value = clean_value(value)
     if not value:
@@ -80,16 +103,63 @@ def normalize_header(value: Any, idx: int) -> str:
     return str(value) if value else f"列{idx}"
 
 
-def sheet_rows(ws: Any) -> tuple[list[str], list[list[Any]]]:
-    headers = [normalize_header(ws.cell(1, c).value, c) for c in range(1, ws.max_column + 1)]
-    while headers and all(clean_value(ws.cell(r, len(headers)).value) is None for r in range(1, ws.max_row + 1)):
-        headers.pop()
+def dedupe_headers(headers: list[str]) -> list[str]:
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for header in headers:
+        seen[header] = seen.get(header, 0) + 1
+        out.append(header if seen[header] == 1 else f"{header}_{seen[header]}")
+    return out
+
+
+def row_non_empty_count(ws: Any, row_idx: int) -> int:
+    return sum(clean_value(ws.cell(row_idx, c).value) is not None for c in range(1, ws.max_column + 1))
+
+
+def detect_header_row(ws: Any, max_scan: int = 15) -> int:
+    scan_to = min(ws.max_row, max_scan)
+    best_row = 1
+    best_score = -1
+    for row_idx in range(1, scan_to + 1):
+        values = [clean_value(ws.cell(row_idx, c).value) for c in range(1, ws.max_column + 1)]
+        non_empty = [v for v in values if v is not None]
+        if len(non_empty) < 2:
+            continue
+        stringish = sum(isinstance(v, str) for v in non_empty)
+        unique_count = len({str(v).strip() for v in non_empty})
+        below_rows = range(row_idx + 1, min(ws.max_row, row_idx + 8) + 1)
+        rows_with_data = sum(row_non_empty_count(ws, r) >= min(2, len(non_empty)) for r in below_rows)
+        above_rows = range(1, row_idx)
+        sparse_above = sum(row_non_empty_count(ws, r) <= 1 for r in above_rows)
+        duplicate_penalty = len(non_empty) - unique_count
+        score = len(non_empty) * 4 + stringish * 2 + rows_with_data * 6 + sparse_above - duplicate_penalty * 5
+        if row_idx == 1:
+            score += 2
+        if score > best_score:
+            best_row = row_idx
+            best_score = score
+    return best_row
+
+
+def sheet_rows(ws: Any, header_row: int | None = None) -> tuple[list[str], list[list[Any]], int]:
+    header_row = header_row or detect_header_row(ws)
+    if header_row < 1 or header_row > ws.max_row:
+        raise SystemExit(f"Header row {header_row} is outside sheet {ws.title!r}.")
+    used_cols: list[int] = []
+    for c in range(1, ws.max_column + 1):
+        has_header = clean_value(ws.cell(header_row, c).value) is not None
+        has_data = any(clean_value(ws.cell(r, c).value) is not None for r in range(header_row + 1, ws.max_row + 1))
+        if has_header or has_data:
+            used_cols.append(c)
+    if not used_cols:
+        return [], [], header_row
+    headers = dedupe_headers([normalize_header(ws.cell(header_row, c).value, idx + 1) for idx, c in enumerate(used_cols)])
     rows: list[list[Any]] = []
-    for r in range(2, ws.max_row + 1):
-        row = [clean_value(ws.cell(r, c).value) for c in range(1, len(headers) + 1)]
+    for r in range(header_row + 1, ws.max_row + 1):
+        row = [clean_value(ws.cell(r, c).value) for c in used_cols]
         if any(v is not None for v in row):
             rows.append(row)
-    return headers, rows
+    return headers, rows, header_row
 
 
 def choose_primary_sheet(wb: Any, requested: str | None) -> str:
@@ -99,7 +169,7 @@ def choose_primary_sheet(wb: Any, requested: str | None) -> str:
         return requested
     non_empty = []
     for ws in wb.worksheets:
-        headers, rows = sheet_rows(ws)
+        headers, rows, _ = sheet_rows(ws)
         if headers and rows:
             non_empty.append((ws.title, len(rows), len(headers)))
     for hint in MAIN_SHEET_HINTS:
@@ -118,7 +188,9 @@ def infer_field(name: str, values: list[Any], primary: bool = False) -> dict[str
         return {"type": "text", "name": name}
     if DATETIME_RE.search(name):
         return {"type": "datetime", "name": name, "style": {"format": "yyyy-MM-dd HH:mm"}}
-    numeric_count = sum(isinstance(v, (int, float)) and not isinstance(v, bool) for v in non_empty)
+    numeric_values = [parse_number(v) for v in non_empty]
+    parsed_numbers = [v for v in numeric_values if v is not None]
+    numeric_count = len(parsed_numbers)
     if non_empty and numeric_count / len(non_empty) >= 0.85:
         if CURRENCY_RE.search(name):
             return {"type": "number", "name": name, "style": {"type": "currency", "precision": 2, "currency_code": "CNY"}}
@@ -128,7 +200,7 @@ def infer_field(name: str, values: list[Any], primary: bool = False) -> dict[str
                 "name": name,
                 "style": {"type": "plain", "precision": 2, "percentage": True, "thousands_separator": False},
             }
-        precision = 0 if all(float(v).is_integer() for v in non_empty if isinstance(v, (int, float))) else 2
+        precision = 0 if all(float(v).is_integer() for v in parsed_numbers) else 2
         return {
             "type": "number",
             "name": name,
@@ -151,8 +223,8 @@ def cell_for_field(field: dict[str, Any], value: Any) -> Any:
         return split_multi(value)
     if field["type"] == "datetime":
         return str(value)
-    if field["type"] == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
-        return float(value)
+    if field["type"] == "number":
+        return parse_number(value)
     return value
 
 
@@ -272,6 +344,7 @@ def main() -> None:
     parser.add_argument("--excel", required=True, type=Path)
     parser.add_argument("--base-name")
     parser.add_argument("--primary-sheet")
+    parser.add_argument("--header-row", type=int, help="Force the header row for the primary sheet when auto-detection is wrong.")
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--lark-cli", default=shutil.which("lark-cli") or "/Users/cp/.local/bin/lark-cli")
     parser.add_argument("--prepare-only", action="store_true")
@@ -294,7 +367,7 @@ def main() -> None:
     work_dir.mkdir(parents=True, exist_ok=True)
 
     ws = wb[primary]
-    headers, rows = sheet_rows(ws)
+    headers, rows, header_row = sheet_rows(ws, args.header_row)
     fields, records = build_table_payload(headers, rows)
     write_json(work_dir / "main_fields.json", fields)
     for idx in range(0, len(records["rows"]), 200):
@@ -304,16 +377,16 @@ def main() -> None:
     for sheet in wb.sheetnames:
         if sheet == primary:
             continue
-        h, r = sheet_rows(wb[sheet])
+        h, r, aux_header_row = sheet_rows(wb[sheet])
         if not h or not r:
             continue
         aux_fields, aux_records = build_table_payload(h, r, force_text=("原始" in sheet))
         safe = re.sub(r"[^\w\u4e00-\u9fff-]+", "_", sheet)
         write_json(work_dir / f"{safe}_fields.json", aux_fields)
         write_json(work_dir / f"{safe}_records.json", aux_records)
-        auxiliaries.append({"name": sheet, "fields_file": f"{safe}_fields.json", "records_file": f"{safe}_records.json", "rows": len(r)})
+        auxiliaries.append({"name": sheet, "fields_file": f"{safe}_fields.json", "records_file": f"{safe}_records.json", "rows": len(r), "header_row": aux_header_row})
 
-    plan = {"base_name": base_name, "primary_sheet": primary, "main_rows": len(rows), "main_fields": len(headers), "auxiliary_tables": auxiliaries, "work_dir": str(work_dir)}
+    plan = {"base_name": base_name, "primary_sheet": primary, "primary_header_row": header_row, "main_rows": len(rows), "main_fields": len(headers), "auxiliary_tables": auxiliaries, "work_dir": str(work_dir)}
     write_json(work_dir / "plan.json", plan)
     if args.prepare_only:
         print(json.dumps({"ok": True, "plan": plan, "fields": fields}, ensure_ascii=False, indent=2))

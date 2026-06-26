@@ -7,7 +7,7 @@ description: Convert Excel workbooks into Feishu/Lark Base multi-dimensional tab
 
 ## Overview
 
-Use this skill to convert a local Excel workbook into a Feishu Base. It is designed for workbooks with one main data sheet and optional helper sheets such as dashboards, dictionaries, raw data, or view suggestions.
+Use this skill to convert a local Excel workbook into a Feishu Base. It supports both raw single-sheet Excel files and workbooks with one main data sheet plus optional helper sheets such as dashboards, dictionaries, raw data, or view suggestions. The user should not need to manually rebuild a normal Excel file into a multi-sheet template before conversion.
 
 The reusable script is `scripts/feishu_base_from_excel.py`. Prefer the script for the conversion so field inference, batching, and verification are consistent.
 
@@ -35,6 +35,7 @@ python3 scripts/feishu_base_from_excel.py --excel /path/to/file.xlsx --prepare-o
 2. Review the preview:
 
 - Primary sheet chosen for the main Base table.
+- Header row detected for the primary sheet. The script scans the first rows so title notes above the table do not become fields.
 - Field type inference.
 - Planned auxiliary tables.
 - Planned marketing/operations views and dashboards.
@@ -49,6 +50,7 @@ Optional flags:
 
 - `--base-name "Name"`: override the Base title.
 - `--primary-sheet "Sheet"`: force the main data sheet.
+- `--header-row N`: force the primary sheet's header row if auto-detection picked the wrong row.
 - `--work-dir /path/to/dir`: save generated payloads and logs somewhere specific.
 - `--no-views`: skip auto-created views.
 - `--no-dashboards`: skip auto-created dashboards.
@@ -63,6 +65,7 @@ Optional flags:
 ## Conventions
 
 - Treat the primary sheet as the main operational table. Prefer sheet names containing `飞书导入`, `导入主表`, `主表`, `明细`, `数据`, or `raw/main` when no sheet is specified.
+- Auto-detect the header row for every imported sheet. This allows files with a title, date range, or notes above the real table.
 - Import other non-empty sheets as auxiliary tables.
 - Preserve IDs as text.
 - Use number fields for numeric metrics, currency style for amount/cost/GMV/revenue fields, percentage style for rate fields, datetime for date/time columns, single-select for low-cardinality categories, and multi-select for tag-like columns.
@@ -78,5 +81,6 @@ Optional flags:
 
 - If Base creation succeeds but later writes fail, do not recreate blindly. Reuse the reported `base_token` and inspect existing tables.
 - If field creation fails due to enum/style validation, fix generated field JSON and retry only the failed creation step when possible.
+- If the detected header row is wrong, rerun preview/import with `--header-row N` for the primary sheet instead of asking the user to manually remake the Excel file.
 - If `@file` payload paths are rejected by `lark-cli`, run commands from the generated work directory and use relative `@filename` paths.
 - If search/list permissions are missing, continue with known base tokens and direct Base APIs; do not request extra scopes unless the user asks for search.
