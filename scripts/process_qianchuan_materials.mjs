@@ -13,7 +13,6 @@ const REQUIRED_FIELDS = {
   materialId: ["素材ID"],
   createdAt: ["素材创建时间"],
   spend: ["整体消耗"],
-  gmv: ["整体成交金额"],
   roi: ["整体支付ROI"],
 };
 
@@ -22,6 +21,7 @@ const OPTIONAL_FIELDS = {
   duration: ["素材时长"],
   source: ["素材来源"],
   rawTags: ["标签"],
+  gmv: ["整体成交金额"],
   ctr: ["整体点击率"],
   play3s: ["3秒播放率"],
   completion: ["视频完播率"],
@@ -180,6 +180,8 @@ function buildRecords(sourceValues) {
     return i >= 0 ? parsePercent(row[i]) : 0;
   };
   return sourceValues.slice(1).filter((r) => r[required.materialId]).map((r) => {
+    const spend = parseNumber(r[required.spend]);
+    const roi = parseNumber(r[required.roi]);
     const record = {
       materialName: r[required.materialName],
       materialId: String(r[required.materialId]),
@@ -188,9 +190,9 @@ function buildRecords(sourceValues) {
       createdAt: r[required.createdAt],
       source: optionalValue(r, "source"),
       rawTags: optionalValue(r, "rawTags") === "-" ? "" : optionalValue(r, "rawTags"),
-      spend: parseNumber(r[required.spend]),
-      gmv: parseNumber(r[required.gmv]),
-      roi: parseNumber(r[required.roi]),
+      spend,
+      gmv: optionalNumber(r, "gmv") || spend * roi,
+      roi,
       ctr: optionalPercent(r, "ctr"),
       play3s: optionalPercent(r, "play3s"),
       completion: optionalPercent(r, "completion"),

@@ -31,9 +31,9 @@ lark-cli base +table-list --base-token <token>
 
 1. Decide whether the workbook needs preprocessing.
 
-For Qianchuan/Douyin material exports, run the preprocessor first when the first sheet contains core headers such as `素材ID`, `素材名称` or `素材视频名称`, `素材创建时间`, `整体消耗`, `整体成交金额`, and `整体支付ROI`.
+For Qianchuan/Douyin material exports, run the preprocessor first when the first sheet contains core headers such as `素材ID`, `素材名称` or `素材视频名称`, `素材创建时间`, `整体消耗`, and `整体支付ROI`.
 
-The preprocessor also handles richer exports with headers such as `素材评估`, `素材时长`, `素材来源`, `标签`, `整体点击率`, `3秒播放率`, `视频完播率`, `整体转化率`, `整体展示次数`, `整体点击次数`, `素材关联的计划数量`, and `素材关联的商品数量`. Missing optional metrics are filled with blank or `0` values.
+The preprocessor also handles richer exports with headers such as `素材评估`, `素材时长`, `素材来源`, `标签`, `整体成交金额`, `整体点击率`, `3秒播放率`, `视频完播率`, `整体转化率`, `整体展示次数`, `整体点击次数`, `素材关联的计划数量`, and `素材关联的商品数量`. Missing optional metrics are filled with blank or `0` values. If `整体成交金额` is missing, GMV is estimated as `整体消耗 * 整体支付ROI`.
 
 Run it with the bundled Node runtime:
 
