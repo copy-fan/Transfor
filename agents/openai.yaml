@@ -1,4 +1,4 @@
 interface:
   display_name: "飞书 Excel 转多维表格"
-  short_description: "将 Excel 自动导入飞书多维表格并生成视图"
-  default_prompt: "Use $feishu-base-from-excel to convert this Excel workbook into a Feishu Base with useful views and dashboards."
+  short_description: "预处理千川素材表，并导入飞书多维表格"
+  default_prompt: "Use $feishu-base-from-excel to preprocess this Excel workbook if it is a Qianchuan material export, then convert it into a Feishu Base with useful views and dashboards."

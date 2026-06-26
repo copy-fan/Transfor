@@ -1,15 +1,18 @@
 ---
 name: feishu-base-from-excel
-description: Convert Excel workbooks into Feishu/Lark Base multi-dimensional tables using lark-cli. Use when the user asks to turn an .xlsx/.xls spreadsheet into a Feishu Base, import workbook sheets into Base tables, infer fields from Excel columns, create useful views/dashboards for marketing or operations analysis, or repeat the "Excel file to Feishu multidimensional table" workflow.
+description: Convert Excel workbooks into Feishu/Lark Base multi-dimensional tables using lark-cli. Use when the user asks to turn an .xlsx/.xls spreadsheet into a Feishu Base, import workbook sheets into Base tables, preprocess Qianchuan/Douyin material export spreadsheets, infer fields from Excel columns, create useful views/dashboards for marketing or operations analysis, or repeat the "Excel file to Feishu multidimensional table" workflow.
 ---
 
 # Feishu Base From Excel
 
 ## Overview
 
-Use this skill to convert a local Excel workbook into a Feishu Base. It supports both raw single-sheet Excel files and workbooks with one main data sheet plus optional helper sheets such as dashboards, dictionaries, raw data, or view suggestions. The user should not need to manually rebuild a normal Excel file into a multi-sheet template before conversion.
+Use this skill to convert a local Excel workbook into a Feishu Base. It supports raw single-sheet Excel files, Qianchuan/Douyin material export spreadsheets, and workbooks with one main data sheet plus optional helper sheets such as dashboards, dictionaries, raw data, or view suggestions. The user should not need to manually rebuild a normal Excel file into a multi-sheet template before conversion.
 
-The reusable script is `scripts/feishu_base_from_excel.py`. Prefer the script for the conversion so field inference, batching, and verification are consistent.
+Reusable scripts:
+
+- `scripts/process_qianchuan_materials.mjs`: preprocess Qianchuan/Douyin video material exports into an enriched multi-sheet workbook.
+- `scripts/feishu_base_from_excel.py`: create the Feishu Base, infer fields, write records, and add useful views/dashboards.
 
 ## Prerequisites
 
@@ -26,13 +29,28 @@ lark-cli base +table-list --base-token <token>
 
 ## Workflow
 
-1. Run a safe preview:
+1. Decide whether the workbook needs preprocessing.
+
+For Qianchuan/Douyin material exports, run the preprocessor first when the first sheet contains core headers such as `素材ID`, `素材名称` or `素材视频名称`, `素材创建时间`, `整体消耗`, `整体成交金额`, and `整体支付ROI`.
+
+The preprocessor also handles richer exports with headers such as `素材评估`, `素材时长`, `素材来源`, `标签`, `整体点击率`, `3秒播放率`, `视频完播率`, `整体转化率`, `整体展示次数`, `整体点击次数`, `素材关联的计划数量`, and `素材关联的商品数量`. Missing optional metrics are filled with blank or `0` values.
+
+Run it with the bundled Node runtime:
+
+```bash
+/Users/cp/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node \
+scripts/process_qianchuan_materials.mjs /path/to/file.xlsx --out /tmp/qianchuan-preprocess
+```
+
+Use the `xlsxPath` from the JSON output as the input for the Base import.
+
+2. Run a safe Base preview:
 
 ```bash
 python3 scripts/feishu_base_from_excel.py --excel /path/to/file.xlsx --prepare-only
 ```
 
-2. Review the preview:
+3. Review the preview:
 
 - Primary sheet chosen for the main Base table.
 - Header row detected for the primary sheet. The script scans the first rows so title notes above the table do not become fields.
@@ -40,7 +58,7 @@ python3 scripts/feishu_base_from_excel.py --excel /path/to/file.xlsx --prepare-o
 - Planned auxiliary tables.
 - Planned marketing/operations views and dashboards.
 
-3. Run the import:
+4. Run the import:
 
 ```bash
 python3 scripts/feishu_base_from_excel.py --excel /path/to/file.xlsx
@@ -56,7 +74,7 @@ Optional flags:
 - `--no-dashboards`: skip auto-created dashboards.
 - `--lark-cli /path/to/lark-cli`: use a specific CLI binary.
 
-4. Verify:
+5. Verify:
 
 - Confirm the script reports `ok: true` and a Feishu Base URL.
 - Read back table list and sample records if the user needs extra assurance.
@@ -65,6 +83,7 @@ Optional flags:
 ## Conventions
 
 - Treat the primary sheet as the main operational table. Prefer sheet names containing `飞书导入`, `导入主表`, `主表`, `明细`, `数据`, or `raw/main` when no sheet is specified.
+- For Qianchuan/Douyin material exports, preprocess before import so `脚本风格`, `开头钩子类型`, `素材值`, `素材评级`, `跑量类型`, `优化方向`, field dictionary, view suggestions, raw data, and chart helper data are generated.
 - Auto-detect the header row for every imported sheet. This allows files with a title, date range, or notes above the real table.
 - Import other non-empty sheets as auxiliary tables.
 - Preserve IDs as text.
